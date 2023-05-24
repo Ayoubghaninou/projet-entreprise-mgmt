@@ -3,6 +3,7 @@ import dateparser
 from dotenv import load_dotenv
 import os
 from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -172,8 +173,9 @@ def main_scrap():
         options.add_argument("--lang=en-US")
         options.add_experimental_option(
             'prefs', {'intl.accept_languages': 'en,en_US'})
-        DriverPath = DriverLocation
-        driver = webdriver.Chrome(DriverPath, options=options)
+        # DriverPath = DriverLocation
+        # driver = webdriver.Chrome(DriverPath, options=options)
+        driver = webdriver.Chrome(ChromeDriverManager().install())
 
         driver.get(URL)
         lat, lng = get_place_coordinates(URL)

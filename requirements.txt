@@ -23,6 +23,7 @@ nltk
 pyLDAvis
 IPython
 python-dotenv
+webdriver-manager
 # pillow
 # svglib
 # reportlab
