@@ -232,7 +232,7 @@ with analyse_data:
             nltk.download('punkt')
 
             # Define the set of stopwords for French
-            stop_words = set(stopwords.words('French'))
+            stop_words = set(stopwords.words('french'))
 
             # Concatenate all the comments:
             all_comments = ' '.join(data['comment'].dropna().astype(str))
