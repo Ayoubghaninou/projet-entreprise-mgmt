@@ -13,3 +13,15 @@ pandas
 numpy 
 matplotlib 
 textblob
+spacy
+gensim
+scrap
+textblob
+seaborn
+wordcloud
+nltk
+collections
+pyLDAvis
+pillow
+svglib
+reportlab

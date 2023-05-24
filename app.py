@@ -3,6 +3,7 @@ import scrap
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from textblob import TextBlob
 import seaborn as sns
 import numpy as np
@@ -12,16 +13,28 @@ from nltk.tokenize import word_tokenize
 from collections import Counter
 import nltk
 import spacy
-
-# Set up the layout
-# st.sidebar.title('Menu')
-# operation = st.sidebar.radio(
-#     "Go to", ['Home', 'Scrape Reviews', 'View Data', 'Analyse Data'])
+from spacy import displacy
+from gensim import corpora
+from gensim.models.ldamodel import LdaModel
+import pyLDAvis.gensim_models
+from PIL import Image
+# import io
+# from svglib.svglib import svg2rlg
+# from reportlab.graphics import renderPM
 
 home, scrap_reviews, view_data, analyse_data = st.tabs(['Home', 'Scrape Reviews', 'View Data', 'Analyse Data'])
 
 with open('config.json') as json_file:
     config = json.load(json_file)
+
+
+nlp = spacy.load('fr_core_news_sm')
+
+def render_displacy(doc):
+    svg = displacy.render(doc, style='dep')
+    drawing = svg2rlg(io.StringIO(svg))
+    png_image = renderPM.drawToString(drawing, fmt='PNG')
+    return png_image
 
 # Define actions for each operation
 with home:
@@ -72,7 +85,12 @@ with analyse_data:
             data = pd.read_csv('out.csv')
 
             # 2. Data Cleaning
-            data['date'] = pd.to_datetime(data['date'])
+            # Convert the index back to a column
+            data.reset_index(inplace=True)
+
+            # Create a new column to hold just the year-month information
+            data['date'] = pd.to_datetime(data['date'], format='%Y-%m-%d %H:%M:%S.%f') 
+            data['year_month'] = data['date'].dt.to_period('M')
             data.drop_duplicates(inplace=True)
             # Replace NaNs with empty strings
             data['comment'].fillna('', inplace=True)
@@ -91,6 +109,18 @@ with analyse_data:
             plt.ylabel('Average rating')
             st.pyplot(plt)
 
+            st.subheader("Individual ratings over time:")
+            plt.figure(figsize=(12, 6))
+            # Plot each individual review
+            plt.scatter(data['year_month'].dt.to_timestamp(), data['rating'], alpha=0.5)
+
+            plt.title('Individual ratings over time')
+            plt.ylabel('Rating')
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
+            plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=6))  # set x-axis intervals to every 6 months
+            plt.gcf().autofmt_xdate()  # Rotate date labels for readability
+
+            st.pyplot(plt)
             # 4. Qualitative Analysis
             # Sentiment analysis
             st.subheader("Average sentiment polarity and subjectivity:")
@@ -160,7 +190,22 @@ with analyse_data:
 
             table.subheader("Most Frequent Words table")
             table.table(df_word_freq)
+            
+            # Preprocessing
+            processed_data = data['comment'].map(word_tokenize)
+            dictionary = corpora.Dictionary(processed_data)
+            corpus = [dictionary.doc2bow(text) for text in processed_data]
 
+            # Apply LDA
+            lda_model = LdaModel(corpus, num_topics=5, id2word=dictionary, passes=10)
+
+            # Visualizing the topics
+            lda_visualization = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
+            pyLDAvis.display(lda_visualization)
+
+
+            nlp = spacy.load('fr_core_news_sm')
+            data['comment'].dropna().apply(lambda x: [(ent.text, ent.label_) for ent in nlp(x).ents])
             st.subheader("Monthly Reviews Count:")
             data.resample('M').size().plot()
             st.pyplot(plt)
@@ -181,13 +226,22 @@ with analyse_data:
 
             # Process the comments to extract named entities
             doc = nlp(all_comments)
+            exclusion_list = ['l’', 's’', 'j’', 'm’', 'y’', 'qu’']
 
             # Extract named entities and count their frequencies
-            named_entities = Counter([ent.text for ent in doc.ents if ent.label_ in ['PER', 'ORG', 'LOC', 'DATE']])
+            named_entities = Counter([ent.text for ent in doc.ents if ent.label_ in ['PER', 'ORG', 'LOC', 'DATE'] and ent.text not in exclusion_list])
 
-            # Display the extracted named entities and their frequencies in the Streamlit app
-            st.subheader("Named Entities:")
-            for entity, count in named_entities.most_common(10):
-                st.write(f"{entity}: {count}")
+            # Convert named entities to a pandas dataframe
+            df_entities = pd.DataFrame(named_entities.most_common(10), columns=['Entity', 'Count'])
+            st.table(df_entities)
+
+
+            # for review in data['comment']:
+            #     doc = nlp(review) 
+            #     png_image = render_displacy(doc) 
+            #     st.image(png_image, format='PNG')    
+            #     for token in doc: 
+            #         st.write(f'{token.text} <--{token.dep_}-- {token.head.text}')
+
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
