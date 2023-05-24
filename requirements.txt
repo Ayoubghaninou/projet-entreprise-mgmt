@@ -21,6 +21,7 @@ seaborn
 wordcloud
 nltk
 pyLDAvis
+IPython
 # pillow
 # svglib
 # reportlab
