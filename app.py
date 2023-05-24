@@ -77,7 +77,7 @@ def render_displacy(doc):
 # Define actions for each operation
 with home:
     st.title("Welcome to the Google Maps Reviews Scrapper and Analyser!")
-    st.write("Use the sidebar to navigate between operations.")
+    st.write("Use the tabs to navigate between pages.")
 
 # with scrap_reviews:
 #     st.title("Scrape Google Maps Reviews")

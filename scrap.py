@@ -9,7 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
-from openpyxl import Workbook
+# from openpyxl import Workbook
 import pandas as pd
 
 import json
