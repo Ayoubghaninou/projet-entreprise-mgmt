@@ -169,10 +169,11 @@ def main_scrap():
     print('starting...')
     try: 
         options = webdriver.ChromeOptions()
-        # options.add_argument("--headless")  # show browser or not
+        options.add_argument("--headless")  # show browser or not
         options.add_argument("--lang=en-US")
         options.add_experimental_option(
             'prefs', {'intl.accept_languages': 'en,en_US'})
+        options.add_argument('--no-sandbox')
         # DriverPath = DriverLocation
         # driver = webdriver.Chrome(DriverPath, options=options)
         driver = webdriver.Chrome(ChromeDriverManager().install())
