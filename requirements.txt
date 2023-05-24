@@ -19,7 +19,7 @@ textblob
 seaborn
 wordcloud
 nltk
-# pyLDAvis
+pyLDAvis
 # pillow
 # svglib
 # reportlab
