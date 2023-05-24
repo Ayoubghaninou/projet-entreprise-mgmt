@@ -17,7 +17,7 @@ from spacy import displacy
 from gensim import corpora
 from gensim.models.ldamodel import LdaModel
 import pyLDAvis.gensim_models
-from PIL import Image
+# from PIL import Image
 # import io
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPM
@@ -204,7 +204,6 @@ with analyse_data:
             pyLDAvis.display(lda_visualization)
 
 
-            nlp = spacy.load('fr_core_news_sm')
             data['comment'].dropna().apply(lambda x: [(ent.text, ent.label_) for ent in nlp(x).ents])
             st.subheader("Monthly Reviews Count:")
             data.resample('M').size().plot()
@@ -220,9 +219,6 @@ with analyse_data:
             ax.set_ylabel('Count')
             ax.set_title('Rating Distribution Over Time')
             st.pyplot(fig)
-
-            # Load the pre-trained French language model
-            nlp = spacy.load('fr_core_news_sm')
 
             # Process the comments to extract named entities
             doc = nlp(all_comments)
