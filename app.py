@@ -21,6 +21,7 @@ import pyLDAvis.gensim_models
 # import io
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPM
+import en_core_web_sm
 
 home, scrap_reviews, view_data, analyse_data = st.tabs(['Home', 'Scrape Reviews', 'View Data', 'Analyse Data'])
 
@@ -28,7 +29,8 @@ with open('config.json') as json_file:
     config = json.load(json_file)
 
 
-nlp = spacy.load('fr_core_news_sm')
+# nlp = spacy.load('fr_core_news_sm')
+nlp = en_core_web_sm.load()
 
 def render_displacy(doc):
     svg = displacy.render(doc, style='dep')
