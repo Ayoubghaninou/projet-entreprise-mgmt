@@ -19,7 +19,6 @@ textblob
 seaborn
 wordcloud
 nltk
-collections
 pyLDAvis
 pillow
 svglib
