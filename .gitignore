@@ -1,3 +1,4 @@
 Driver/chromedriver*
 __pycache__/
 hetic-projet-entreprise/
+.env

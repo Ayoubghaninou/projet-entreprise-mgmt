@@ -22,8 +22,7 @@ import pyLDAvis.gensim_models
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPM
 import fr_core_news_sm
-import requests
-import re
+
 
 home, scrap_reviews, view_data, analyse_data = st.tabs(['Home', 'Scrape Reviews', 'View Data', 'Analyse Data'])
 
@@ -33,46 +32,6 @@ with open('config.json') as json_file:
 
 # nlp = spacy.load('fr_core_news_sm')
 nlp = fr_core_news_sm.load()
-
-
-# def get_place_coordinates(url): 
-
-#     # Extract latitude and longitude from URL using regular expression
-#     match = re.search(r'@(\-?\d+\.\d+),(\-?\d+\.\d+)', url)
-#     if match:
-#         lat = match.group(1)
-#         lng = match.group(2)
-#         return lat, lng
-#     else:
-#         return None, None
-
-# def reverse_geocode(lat, lng):
-#     result = None
-#     geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lng}&key=YOUR_API_KEY"
-#     response = requests.get(geocode_url)
-#     if response.status_code == 200:
-#         data = response.json()
-#         if len(data['results']) > 0:
-#             result = data['results'][0]
-#     return result
-
-# lat, lng = 48.8510068, 2.4247948
-# result = reverse_geocode(lat, lng)
-
-# if result is not None:
-#     for component in result['address_components']:
-#         if 'locality' in component['types']:
-#             print("City:", component['long_name'])
-#         if 'administrative_area_level_1' in component['types']:
-#             print("Region:", component['long_name'])
-#         if 'country' in component['types']:
-#             print("Country:", component['long_name'])
-
-def render_displacy(doc):
-    svg = displacy.render(doc, style='dep')
-    drawing = svg2rlg(io.StringIO(svg))
-    png_image = renderPM.drawToString(drawing, fmt='PNG')
-    return png_image
 
 # Define actions for each operation
 with home:

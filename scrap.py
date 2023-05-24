@@ -1,7 +1,7 @@
 import time
 import dateparser
+from dotenv import load_dotenv
 import os
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -13,16 +13,48 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import pandas as pd
 
 import json
+import requests
+import re
+
 
 with open('config.json') as json_file:
     config = json.load(json_file)
+load_dotenv()
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
 URL = config['URL']
 DriverLocation = config['DriverLocation']
 
 
+def get_place_coordinates(url): 
 
-def get_data(driver):
+    # Extract latitude and longitude from URL using regular expression
+    match = re.search(r'@(\-?\d+\.\d+),(\-?\d+\.\d+)', url)
+    if match:
+        lat = match.group(1)
+        lng = match.group(2)
+        return lat, lng
+    else:
+        return None, None
+
+def reverse_geocode(lat, lng):
+    result = None
+    geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lng}&key={GOOGLE_MAPS_API_KEY}"
+    response = requests.get(geocode_url)
+    if response.status_code == 200:
+        data = response.json()
+        if len(data['results']) > 0:
+            result = data['results'][0]
+    return result
+
+def render_displacy(doc):
+    svg = displacy.render(doc, style='dep')
+    drawing = svg2rlg(io.StringIO(svg))
+    png_image = renderPM.drawToString(drawing, fmt='PNG')
+    return png_image
+
+
+def get_data(driver, city, region, country):
     """
     this function get main text, score, name
     """
@@ -53,7 +85,7 @@ def get_data(driver):
         except TimeoutException:
                 pass
         try:        
-            text_element = WebDriverWait(data, 10).until(EC.presence_of_element_located(
+            text_element = WebDriverWait(data, 3).until(EC.presence_of_element_located(
                 (By.XPATH, './/*[contains(@class, "MyEned")]/span[1]')))
             text = text_element.text
             print("text", text)
@@ -61,7 +93,7 @@ def get_data(driver):
             print('Failed to retrieve some data. Moving to next review.')
             pass
         try:
-            date_element = WebDriverWait(data, 10).until(
+            date_element = WebDriverWait(data, 3).until(
                 EC.presence_of_element_located((By.XPATH, './/*[contains(@class, "rsqaWe")]')))
             date = parse_relative_date(date_element.text)
 
@@ -70,7 +102,7 @@ def get_data(driver):
             print('Failed to retrieve some data. Moving to next review.')
             pass
         try:
-            score_element = WebDriverWait(data, 10).until(
+            score_element = WebDriverWait(data, 3).until(
                 EC.presence_of_element_located((By.XPATH, './/*[contains(@class, "kvMYJc")]')))
             stars = score_element.find_elements_by_xpath(
                 './/*[contains(@class, "vzX5Ic")]')
@@ -80,7 +112,7 @@ def get_data(driver):
             print('Failed to retrieve some data. Moving to next review.')
             pass
 
-        lst_data.append([name + " from GoogleMaps", text, score, date])
+        lst_data.append([name + " from GoogleMaps", text, score, date, city, region, country])
 
     return lst_data
 
@@ -121,7 +153,7 @@ def scrolling(driver, counter):
 
 def write_to_csv(data):
     print('write to excel...')
-    cols = ["name", "comment", 'rating', 'date']
+    cols = ["name", "comment", 'rating', 'date', 'city', 'region', 'country']
     df = pd.DataFrame(data, columns=cols)
     
     # Check if file exists to avoid writing the header multiple times
@@ -144,12 +176,25 @@ def main_scrap():
         driver = webdriver.Chrome(DriverPath, options=options)
 
         driver.get(URL)
+        lat, lng = get_place_coordinates(URL)
+        result = reverse_geocode(lat, lng)
+        print(result)
+        city, region, country = ('','','')
+        if result is not None:
+            for component in result['address_components']:
+                if 'locality' in component['types']:
+                    city = component['long_name']
+                if 'administrative_area_level_1' in component['types']:
+                    region = component['long_name']
+                if 'country' in component['types']:
+                    country = component['long_name']
+
         time.sleep(5)
 
         counter = count_reviews(driver)
         scrolling(driver, counter)
 
-        data = get_data(driver)
+        data = get_data(driver, city, region, country)
         driver.close()
 
         write_to_csv(data)
