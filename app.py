@@ -22,6 +22,7 @@ import pyLDAvis.gensim_models
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPM
 import fr_core_news_sm
+import requests
 
 home, scrap_reviews, view_data, analyse_data = st.tabs(['Home', 'Scrape Reviews', 'View Data', 'Analyse Data'])
 
@@ -31,6 +32,29 @@ with open('config.json') as json_file:
 
 # nlp = spacy.load('fr_core_news_sm')
 nlp = fr_core_news_sm.load()
+
+
+# def reverse_geocode(lat, lng):
+#     result = None
+#     geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lng}&key=YOUR_API_KEY"
+#     response = requests.get(geocode_url)
+#     if response.status_code == 200:
+#         data = response.json()
+#         if len(data['results']) > 0:
+#             result = data['results'][0]
+#     return result
+
+# lat, lng = 48.8510068, 2.4247948
+# result = reverse_geocode(lat, lng)
+
+# if result is not None:
+#     for component in result['address_components']:
+#         if 'locality' in component['types']:
+#             print("City:", component['long_name'])
+#         if 'administrative_area_level_1' in component['types']:
+#             print("Region:", component['long_name'])
+#         if 'country' in component['types']:
+#             print("Country:", component['long_name'])
 
 def render_displacy(doc):
     svg = displacy.render(doc, style='dep')
@@ -43,30 +67,61 @@ with home:
     st.title("Welcome to the Google Maps Reviews Scrapper and Analyser!")
     st.write("Use the sidebar to navigate between operations.")
 
+# with scrap_reviews:
+#     st.title("Scrape Google Maps Reviews")
+
+#     with open('config.json') as json_file:
+#         config = json.load(json_file)
+
+#     url = st.text_input(
+#         'Enter the URL of the Google Maps location', config['URL'])
+#     driver_path = st.text_input(
+#         'Enter the path to the Chrome Driver', config['DriverLocation'])
+
+#     if st.button('Scrape Reviews'):
+#         config['URL'] = url
+#         config['DriverLocation'] = driver_path
+
+#         with open('config.json', 'w') as json_file:
+#             json.dump(config, json_file)
+
+#         result = scrap.main_scrap()
+
+#         if result == "Success":
+#             st.success("Scraping completed successfully!")
+#         else:
+#             st.error(f"Scraping failed. Error: {result}")
 with scrap_reviews:
     st.title("Scrape Google Maps Reviews")
 
     with open('config.json') as json_file:
         config = json.load(json_file)
 
-    url = st.text_input(
-        'Enter the URL of the Google Maps location', config['URL'])
-    driver_path = st.text_input(
-        'Enter the path to the Chrome Driver', config['DriverLocation'])
+    # Fetch the existing URL from config.json
+    existing_url = config['URL']
+
+    # input for multiple URLs with existing_url as a default value
+    urls = st.text_area('Enter the URLs of the Google Maps locations (one per line)', existing_url)
+
+    driver_path = st.text_input('Enter the path to the Chrome Driver', config['DriverLocation'])
 
     if st.button('Scrape Reviews'):
-        config['URL'] = url
-        config['DriverLocation'] = driver_path
+        urls = urls.split('\n')  # split the input into separate URLs
 
-        with open('config.json', 'w') as json_file:
-            json.dump(config, json_file)
+        for url in urls:
+            config['URL'] = url
+            config['DriverLocation'] = driver_path
 
-        result = scrap.main_scrap()
+            with open('config.json', 'w') as json_file:
+                json.dump(config, json_file)
 
-        if result == "Success":
-            st.success("Scraping completed successfully!")
-        else:
-            st.error(f"Scraping failed. Error: {result}")
+            result = scrap.main_scrap()
+
+            if result == "Success":
+                st.success(f"Scraping completed successfully for {url}!")
+            else:
+                st.error(f"Scraping failed for {url}. Error: {result}")
+
 
 
 with view_data:
