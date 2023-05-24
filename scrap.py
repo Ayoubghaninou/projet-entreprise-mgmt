@@ -176,7 +176,7 @@ def main_scrap():
         options.add_argument('--no-sandbox')
         # DriverPath = DriverLocation
         # driver = webdriver.Chrome(DriverPath, options=options)
-        driver = webdriver.Chrome(ChromeDriverManager().install())
+        driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
         driver.get(URL)
         lat, lng = get_place_coordinates(URL)
