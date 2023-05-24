@@ -74,14 +74,14 @@ with scrap_reviews:
     # input for multiple URLs with existing_url as a default value
     urls = st.text_area('Enter the URLs of the Google Maps locations (one per line)', existing_url)
 
-    driver_path = st.text_input('Enter the path to the Chrome Driver', config['DriverLocation'])
+    # driver_path = st.text_input('Enter the path to the Chrome Driver', config['DriverLocation'])
 
     if st.button('Scrape Reviews'):
         urls = urls.split('\n')  # split the input into separate URLs
 
         for url in urls:
             config['URL'] = url
-            config['DriverLocation'] = driver_path
+            # config['DriverLocation'] = driver_path
 
             with open('config.json', 'w') as json_file:
                 json.dump(config, json_file)
