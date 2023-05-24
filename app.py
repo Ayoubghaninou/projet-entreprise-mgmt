@@ -23,6 +23,7 @@ import pyLDAvis.gensim_models
 # from reportlab.graphics import renderPM
 import fr_core_news_sm
 import requests
+import re
 
 home, scrap_reviews, view_data, analyse_data = st.tabs(['Home', 'Scrape Reviews', 'View Data', 'Analyse Data'])
 
@@ -33,6 +34,17 @@ with open('config.json') as json_file:
 # nlp = spacy.load('fr_core_news_sm')
 nlp = fr_core_news_sm.load()
 
+
+# def get_place_coordinates(url): 
+
+#     # Extract latitude and longitude from URL using regular expression
+#     match = re.search(r'@(\-?\d+\.\d+),(\-?\d+\.\d+)', url)
+#     if match:
+#         lat = match.group(1)
+#         lng = match.group(2)
+#         return lat, lng
+#     else:
+#         return None, None
 
 # def reverse_geocode(lat, lng):
 #     result = None
@@ -220,7 +232,7 @@ with analyse_data:
             nltk.download('punkt')
 
             # Define the set of stopwords for French
-            stop_words = set(stopwords.words('french'))
+            stop_words = set(stopwords.words('French'))
 
             # Concatenate all the comments:
             all_comments = ' '.join(data['comment'].dropna().astype(str))
