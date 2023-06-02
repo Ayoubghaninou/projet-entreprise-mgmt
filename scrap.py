@@ -8,7 +8,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.webdriver import WebDriver
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, ElementClickInterceptedException
+from bs4 import BeautifulSoup
+from selenium.webdriver.common.keys import Keys
 
 # from openpyxl import Workbook
 import pandas as pd
@@ -55,14 +57,44 @@ def render_displacy(doc):
     return png_image
 
 
-def get_data(driver, city, region, country):
+def get_data(driver, agence):
     """
     this function get main text, score, name
     """
     print('get data...')
-    more_elemets = driver.find_elements_by_class_name('w8nwRe kyuRq')
-    for list_more_element in more_elemets:
-        list_more_element.click()
+
+    lat, lng = get_place_coordinates(driver.current_url)
+    result = reverse_geocode(lat, lng)
+    print(result)
+    city, region, country = ('','','')
+    if result is not None:
+        for component in result['address_components']:
+            if 'locality' in component['types']:
+                city = component['long_name']
+            if 'administrative_area_level_1' in component['types']:
+                region = component['long_name']
+            if 'country' in component['types']:
+                country = component['long_name']
+
+    time.sleep(5)
+
+    counter = count_reviews(driver)
+    scrolling(driver, counter)
+    more_elements = driver.find_elements_by_class_name('w8nwRe kyuRq')
+    # more_elements = driver.find_elements_by_class_name('w8nwRe kyuRq')
+    for list_more_element in more_elements:
+        retries = 5
+        for i in range(retries):
+            try:
+                WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'w8nwRe kyuRq')))
+                driver.execute_script("arguments[0].scrollIntoView();", list_more_element)
+                driver.execute_script("arguments[0].click();", list_more_element)
+                break
+            except ElementClickInterceptedException:
+                print(f'Interception error on attempt {i+1}, retrying...')
+                time.sleep(2)  # Wait for 2 seconds before trying again
+            except Exception as e:
+                print('Failed to click on the element. Error: ', str(e))
 
     elements = driver.find_elements_by_class_name(
         'jftiEf')
@@ -70,23 +102,22 @@ def get_data(driver, city, region, country):
     for data in elements:
         text = ''
         try:
-            name = data.find_element_by_xpath(
-                './/*[contains(@class, "d4r55")]').text
+            wait = WebDriverWait(driver, 5)
+            name_element = wait.until(EC.visibility_of_element_located((By.XPATH, './/*[contains(@class, "d4r55")]')))
+            name = name_element.text
             print("name: ", name)
         except TimeoutException:
                 print('Failed to retrieve some data. Moving to next review.')
                 pass
-            # text_container = WebDriverWait(data, 3).until(EC.presence_of_element_located((By.XPATH, './/*[contains(@class, "MyEned")]')))
-
             # Check if 'See more' button exists and click it if it does
         try:
-            see_more_button = WebDriverWait(data, 2).until(EC.presence_of_element_located(
+            see_more_button = WebDriverWait(data, 5).until(EC.presence_of_element_located(
                 (By.XPATH, './/button[contains(@class, "w8nwRe")]')))
             see_more_button.click()
         except TimeoutException:
                 pass
-        try:        
-            text_element = WebDriverWait(data, 3).until(EC.presence_of_element_located(
+        try:
+            text_element = WebDriverWait(data, 5).until(EC.presence_of_element_located(
                 (By.XPATH, './/*[contains(@class, "MyEned")]/span[1]')))
             text = text_element.text
             print("text", text)
@@ -94,7 +125,7 @@ def get_data(driver, city, region, country):
             print('Failed to retrieve some data. Moving to next review.')
             pass
         try:
-            date_element = WebDriverWait(data, 3).until(
+            date_element = WebDriverWait(data, 5).until(
                 EC.presence_of_element_located((By.XPATH, './/*[contains(@class, "rsqaWe")]')))
             date = parse_relative_date(date_element.text)
 
@@ -103,7 +134,7 @@ def get_data(driver, city, region, country):
             print('Failed to retrieve some data. Moving to next review.')
             pass
         try:
-            score_element = WebDriverWait(data, 3).until(
+            score_element = WebDriverWait(data, 5).until(
                 EC.presence_of_element_located((By.XPATH, './/*[contains(@class, "kvMYJc")]')))
             stars = score_element.find_elements_by_xpath(
                 './/*[contains(@class, "vzX5Ic")]')
@@ -119,25 +150,30 @@ def get_data(driver, city, region, country):
 
 
 def parse_relative_date(string):
-    date = dateparser.parse(string, languages=['fr'])
+    try:
+        date = dateparser.parse(string, languages=['fr'])
+        if date is None:
+            date = pd.Timestamp.now()  # Replace with a default date
+    except Exception as e:
+        print('Failed to parse date:', str(e))
+        date = pd.Timestamp.now()  # Replace with a default date
     return date
 
+
 def count_reviews(driver):
-    try:
-        # Wait up to 10 seconds for the element to be present
-        element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(
-                (By.XPATH, '//*[@id="yDmH0d"]/c-wiz/div/div/div/div[2]/div[1]/div[3]/div[1]/div[1]/form[2]/div/div/button'))
-        )
-        element.click()
-    except:
-        pass
-    result = driver.find_element_by_class_name(
-        'jANrlb').find_element_by_class_name('fontBodySmall').text
-    result = result.replace(',', '')
-    result = result.split(' ')
-    result = result[0].split('\n')
-    return int(int(result[0])/10)+1
+
+    button_avis = driver.find_elements(By.CLASS_NAME, 'hh2c6')[1].click()
+    print(button_avis)
+    time.sleep(10)
+    nombre_avis = driver.find_element(By.CLASS_NAME, 'jANrlb')
+    nombre_avis = int(nombre_avis.text.split("\n")[1].split(" ")[0])
+    # result = driver.find_element_by_class_name(
+    #     'jANrlb').find_element_by_class_name('fontBodySmall').text
+    # result = result.replace(',', '')
+    # result = result.split(' ')
+    # result = result[0].split('\n')
+    # return int(int(result[0])/10)+1
+    return nombre_avis
 
 
 def scrolling(driver, counter):
@@ -164,42 +200,71 @@ def write_to_csv(data):
         df.to_csv('out.csv', mode='a', header=False, index=False)
 
 
+def generate_urls_from_agencies():
+    url = "https://www.pole-emploi.fr/annuaire/votre-pole-emploi.html"
+    reponse = requests.get(url)
+    page = reponse.content
+    soup = BeautifulSoup(page, "html.parser")
+
+    noms_agence = soup.find_all('a', class_='block-item-link')
+
+    all_agences = [nom.text for nom in noms_agence]
+    liste_agence = [item.replace('\n', '').replace('\xa0', '').strip() for item in all_agences]
+
+    # urls = ["https://www.google.fr/maps/search/" + agence for agence in liste_agence]
+    return liste_agence
 
 def main_scrap():
     print('starting...')
-    try: 
+    try:
         options = webdriver.ChromeOptions()
-        # options.add_argument("--headless")  # show browser or not
-        options.add_argument("--lang=en-US")
-        options.add_experimental_option(
-            'prefs', {'intl.accept_languages': 'en,en_US'})
-        # DriverPath = DriverLocation
-        # driver = webdriver.Chrome(DriverPath, options=options)
-        driver = webdriver.Chrome(ChromeDriverManager().install())
-
+        options.add_argument("--lang=fr-FR")
+        options.add_experimental_option('prefs', {'intl.accept_languages': 'fr,fr_FR'})
+        driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
         driver.get(URL)
-        lat, lng = get_place_coordinates(URL)
-        result = reverse_geocode(lat, lng)
-        print(result)
-        city, region, country = ('','','')
-        if result is not None:
-            for component in result['address_components']:
-                if 'locality' in component['types']:
-                    city = component['long_name']
-                if 'administrative_area_level_1' in component['types']:
-                    region = component['long_name']
-                if 'country' in component['types']:
-                    country = component['long_name']
+        liste_agence = generate_urls_from_agencies()[:10] # Assuming you've defined generate_urls_from_agencies() above.
+        print(liste_agence)
 
-        time.sleep(5)
+        try:
+            # Wait up to 10 seconds for the element to be present
+            element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, '//*[@id="yDmH0d"]/c-wiz/div/div/div/div[2]/div[1]/div[3]/div[1]/div[1]/form[2]/div/div/button'))
+            )
+            element.click()
+        except:
+            pass
+        for agence in liste_agence:
+            # Attendre jusqu'à ce que l'élément soit visible et interactif
+            wait = WebDriverWait(driver, 10)
+            recherche = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'tactile-searchbox-input')))
 
-        counter = count_reviews(driver)
-        scrolling(driver, counter)
+            #On clique sur la barre de recherche et on ecrit le nom d'une agence 
+            recherche = driver.find_element(By.CLASS_NAME, 'tactile-searchbox-input')
+            recherche.send_keys(agence)
+            time.sleep(1)
+            recherche.send_keys(Keys.ENTER)
+            time.sleep(3)
+            # Find the suggestions
+            suggestions = driver.find_elements(By.CSS_SELECTOR, 'div.Nv2PK.tH5CWc.THOPZb')
+            if len(suggestions) > 1:
+                clickable = suggestions[0].find_element(By.XPATH, './/a')  # Adjust the locator to suit your needs
+                clickable.click()
+                time.sleep(3)
 
-        data = get_data(driver, city, region, country)
+                data = get_data(driver, agence)
+                write_to_csv(data)
+
+                recherche.clear()
+                # recherche.send_keys(agence)
+                time.sleep(1)
+            else:
+                recherche.send_keys(Keys.ENTER)
+                time.sleep(3)
+                data = get_data(driver, agence)
+                write_to_csv(data)
+
         driver.close()
-
-        write_to_csv(data)
         print('Done!')
         return "Success"
     except Exception as e:

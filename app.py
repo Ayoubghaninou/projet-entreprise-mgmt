@@ -7,6 +7,7 @@ import matplotlib.dates as mdates
 from textblob import TextBlob
 import seaborn as sns
 import numpy as np
+import random
 from wordcloud import WordCloud, STOPWORDS
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -17,17 +18,17 @@ from spacy import displacy
 from gensim import corpora
 from gensim.models.ldamodel import LdaModel
 import pyLDAvis.gensim_models
+import pyLDAvis
 # from PIL import Image
 # import io
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPM
 import fr_core_news_sm
+from IPython.core.display import display, HTML
 
 
-home, scrap_reviews, view_data, analyse_data = st.tabs(['Home', 'Scrape Reviews', 'View Data', 'Analyse Data'])
+home, view_data, analyse_data = st.tabs(['Home', 'View Data', 'Analyse Data'])
 
-with open('config.json') as json_file:
-    config = json.load(json_file)
 
 
 # nlp = spacy.load('fr_core_news_sm')
@@ -62,36 +63,6 @@ with home:
 #             st.success("Scraping completed successfully!")
 #         else:
 #             st.error(f"Scraping failed. Error: {result}")
-with scrap_reviews:
-    st.title("Scrape Google Maps Reviews")
-
-    with open('config.json') as json_file:
-        config = json.load(json_file)
-
-    # Fetch the existing URL from config.json
-    existing_url = config['URL']
-
-    # input for multiple URLs with existing_url as a default value
-    urls = st.text_area('Enter the URLs of the Google Maps locations (one per line)', existing_url)
-
-    # driver_path = st.text_input('Enter the path to the Chrome Driver', config['DriverLocation'])
-
-    if st.button('Scrape Reviews'):
-        urls = urls.split('\n')  # split the input into separate URLs
-
-        for url in urls:
-            config['URL'] = url
-            # config['DriverLocation'] = driver_path
-
-            with open('config.json', 'w') as json_file:
-                json.dump(config, json_file)
-
-            result = scrap.main_scrap()
-
-            if result == "Success":
-                st.success(f"Scraping completed successfully for {url}!")
-            else:
-                st.error(f"Scraping failed for {url}. Error: {result}")
 
 
 
@@ -99,7 +70,7 @@ with view_data:
     st.title("View Data")
     if st.button('Load Data'):
         try:
-            data = pd.read_csv('out.csv')
+            data = pd.read_csv('data.csv')
             st.dataframe(data)
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
@@ -110,12 +81,11 @@ with analyse_data:
         try:
 
             # 1. Loading the Data
-            data = pd.read_csv('out.csv')
+            data = pd.read_csv('data.csv')
 
             # 2. Data Cleaning
             # Convert the index back to a column
             data.reset_index(inplace=True)
-
             # Create a new column to hold just the year-month information
             data['date'] = pd.to_datetime(data['date'], format='%Y-%m-%d %H:%M:%S.%f') 
             data['year_month'] = data['date'].dt.to_period('M')
@@ -165,12 +135,14 @@ with analyse_data:
 
             st.write(data[['polarity', 'subjectivity']].mean())
 
+            nltk.download('stopwords')
+            french_stopwords = set(stopwords.words('french'))
+            custom_stopwords = {"c'est", "très", "fois","si"}  # add any custom stopwords here
+            all_stopwords = STOPWORDS.union(french_stopwords).union(custom_stopwords) # Union of English and French stopwords
 
-            # Create a WordCloud object
-            wordcloud = WordCloud(background_color="white", stopwords=STOPWORDS, max_words=100, contour_color='steelblue')
-            # Generate a word cloud
+            wordcloud = WordCloud(background_color="white", stopwords=all_stopwords, max_words=100, contour_color='steelblue')
             wordcloud.generate(' '.join(data['comment'].astype(str)))
-            # Visualize the word cloud
+
             st.subheader("Word Cloud:")
             st.image(wordcloud.to_array())
             
@@ -186,8 +158,45 @@ with analyse_data:
             plt.xticks(range(1, 6))
             st.pyplot(plt)
             
+            city_counts = data['city'].value_counts()
+            region_counts = data['region'].value_counts()
+
+            st.subheader("Frequency of Reviews by City:")
+            st.bar_chart(city_counts)
+
+            st.subheader("Frequency of Reviews by Region:")
+            st.bar_chart(region_counts)
+
+
+            city_avg_ratings = data.groupby('city')['rating'].mean()
+            region_avg_ratings = data.groupby('region')['rating'].mean()
+
+            st.subheader("Average Rating by City:")
+            st.bar_chart(city_avg_ratings)
+
+            st.subheader("Average Rating by Region:")
+            st.bar_chart(region_avg_ratings)
+
+
+            city_polarity = data.groupby('city')['polarity'].mean().reset_index()
+            city_subjectivity = data.groupby('city')['subjectivity'].mean().reset_index()
+            region_polarity = data.groupby('region')['polarity'].mean().reset_index()
+            region_subjectivity = data.groupby('region')['subjectivity'].mean().reset_index()
+
+            st.subheader("Average Sentiment Polarity by City:")
+            st.bar_chart(city_polarity.set_index('city'))
+
+            st.subheader("Average Sentiment Subjectivity by City:")
+            st.bar_chart(city_subjectivity.set_index('city'))
+
+            st.subheader("Average Sentiment Polarity by Region:")
+            st.bar_chart(region_polarity.set_index('region'))
+
+            st.subheader("Average Sentiment Subjectivity by Region:")
+            st.bar_chart(region_subjectivity.set_index('region'))
+
+
             # Download stopwords and punkt tokenizer
-            nltk.download('stopwords')
             nltk.download('punkt')
 
             # Define the set of stopwords for French
@@ -201,7 +210,7 @@ with analyse_data:
 
             # Filter out stop words, punctuation marks, and single-letter words
             filtered_words = [word.lower() for word in words if word.lower() not in stop_words and word.isalpha() and len(word) > 1]
-
+            
             # Count the frequency of each word
             counter = Counter(filtered_words)
 
@@ -219,17 +228,29 @@ with analyse_data:
             table.subheader("Most Frequent Words table")
             table.table(df_word_freq)
             
+            np.random.seed(42)
+            random.seed(42)
             # Preprocessing
             processed_data = data['comment'].map(word_tokenize)
             dictionary = corpora.Dictionary(processed_data)
             corpus = [dictionary.doc2bow(text) for text in processed_data]
 
             # Apply LDA
-            lda_model = LdaModel(corpus, num_topics=5, id2word=dictionary, passes=10)
+            num_topics = 5  # Set this to the number of topics you want to identify
+            lda_model = LdaModel(corpus, num_topics=num_topics, id2word=dictionary, passes=10)
 
-            # Visualizing the topics
-            lda_visualization = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
-            pyLDAvis.display(lda_visualization)
+            # Prepare the visualization
+            vis = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
+            # Convert the prepared visualization to HTML
+            vis_html = pyLDAvis.prepared_data_to_html(vis)
+
+            # Save the visualization HTML to a file
+            with open('lda.html', 'w') as f:
+                f.write(vis_html)
+
+            # Display the HTML in Streamlit
+            st.markdown('## Topic Modeling Visualization:')
+            st.components.v1.html(vis_html, height=1000, width=1200)
 
 
             data['comment'].dropna().apply(lambda x: [(ent.text, ent.label_) for ent in nlp(x).ents])
@@ -246,11 +267,13 @@ with analyse_data:
             ax.set_xlabel('Month')
             ax.set_ylabel('Count')
             ax.set_title('Rating Distribution Over Time')
+            plt.xticks(rotation=45, ha='right')
+
             st.pyplot(fig)
 
             # Process the comments to extract named entities
             doc = nlp(all_comments)
-            exclusion_list = ['l’', 's’', 'j’', 'm’', 'y’', 'qu’']
+            exclusion_list = ['l’', 's’', 'j’', 'm’', 'y’', 'qu’', 'd’', 'n’']
 
             # Extract named entities and count their frequencies
             named_entities = Counter([ent.text for ent in doc.ents if ent.label_ in ['PER', 'ORG', 'LOC', 'DATE'] and ent.text not in exclusion_list])
@@ -259,7 +282,8 @@ with analyse_data:
             df_entities = pd.DataFrame(named_entities.most_common(10), columns=['Entity', 'Count'])
             st.table(df_entities)
 
-
+            # https://huggingface.co/mrm8488/camembert2camembert_shared-finetuned-french-summarization
+            
             # for review in data['comment']:
             #     doc = nlp(review) 
             #     png_image = render_displacy(doc) 
