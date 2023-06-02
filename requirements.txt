@@ -24,6 +24,7 @@ pyLDAvis
 IPython
 python-dotenv
 webdriver-manager
+bs4
 # pillow
 # svglib
 # reportlab

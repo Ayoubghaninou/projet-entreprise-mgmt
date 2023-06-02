@@ -194,10 +194,10 @@ def write_to_csv(data):
     df = pd.DataFrame(data, columns=cols)
     
     # Check if file exists to avoid writing the header multiple times
-    if not os.path.isfile('out.csv'):
-        df.to_csv('out.csv', header='column_names', index=False)
+    if not os.path.isfile('data.csv'):
+        df.to_csv('data.csv', header='column_names', index=False)
     else: 
-        df.to_csv('out.csv', mode='a', header=False, index=False)
+        df.to_csv('data.csv', mode='a', header=False, index=False)
 
 
 def generate_urls_from_agencies():

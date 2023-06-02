@@ -19,6 +19,7 @@ from gensim import corpora
 from gensim.models.ldamodel import LdaModel
 import pyLDAvis.gensim_models
 import pyLDAvis
+
 # from PIL import Image
 # import io
 # from svglib.svglib import svg2rlg
@@ -262,7 +263,7 @@ with analyse_data:
             st.subheader("Rating Distribution Over Time:")
             monthly_ratings = data.groupby(pd.Grouper(freq='M'))['rating'].value_counts().unstack(fill_value=0)
 
-            fig, ax = plt.subplots(figsize=(10, 6))
+            fig, ax = plt.subplots(figsize=(15, 6)) # Increase figure size
             monthly_ratings.plot(kind='bar', ax=ax)
             ax.set_xlabel('Month')
             ax.set_ylabel('Count')
